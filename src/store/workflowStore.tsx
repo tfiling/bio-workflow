@@ -1,6 +1,4 @@
 import { create } from 'zustand';
-import { collection, getDocs, query, where, doc, getDoc, addDoc, updateDoc, deleteDoc } from 'firebase/firestore';
-import { db } from '../lib/firebase';
 import { Workflow, UserWorkflow } from '../types';
 
 interface WorkflowState {
@@ -17,12 +15,18 @@ interface WorkflowState {
   deleteWorkflow: (id: string) => Promise<void>;
   
   // User workflow actions
-  fetchUserWorkflows: (userId: string) => Promise<void>;
+  fetchUserWorkflows: () => Promise<void>;
   getUserWorkflowById: (id: string) => Promise<UserWorkflow | null>;
-  startWorkflow: (workflowId: string, userId: string, parameters: Record<string, any>) => Promise<string>;
+  startWorkflow: (workflowId: string, parameters: Record<string, any>) => Promise<string>;
   updateUserWorkflow: (id: string, data: Partial<UserWorkflow>) => Promise<void>;
   completeUserWorkflow: (id: string) => Promise<void>;
 }
+
+// In-memory storage for demo purposes
+let workflowsData: Workflow[] = [];
+let userWorkflowsData: UserWorkflow[] = [];
+let nextWorkflowId = 1;
+let nextUserWorkflowId = 1;
 
 export const useWorkflowStore = create<WorkflowState>((set, get) => ({
   workflows: [],
@@ -30,24 +34,10 @@ export const useWorkflowStore = create<WorkflowState>((set, get) => ({
   loading: false,
   error: null,
   
-  // Workflow actions
   fetchWorkflows: async () => {
     try {
       set({ loading: true, error: null });
-      
-      const workflowsCollection = collection(db, 'workflows');
-      const workflowsQuery = query(workflowsCollection, where('publishStatus', '==', 'published'));
-      const querySnapshot = await getDocs(workflowsQuery);
-      
-      const workflows: Workflow[] = [];
-      querySnapshot.forEach((doc) => {
-        workflows.push({
-          id: doc.id,
-          ...doc.data(),
-        } as Workflow);
-      });
-      
-      set({ workflows, loading: false });
+      set({ workflows: workflowsData, loading: false });
     } catch (error) {
       set({ error: (error as Error).message, loading: false });
     }
@@ -56,21 +46,9 @@ export const useWorkflowStore = create<WorkflowState>((set, get) => ({
   getWorkflowById: async (id: string) => {
     try {
       set({ loading: true, error: null });
-      
-      const workflowDoc = await getDoc(doc(db, 'workflows', id));
-      
-      if (workflowDoc.exists()) {
-        const workflow = {
-          id: workflowDoc.id,
-          ...workflowDoc.data(),
-        } as Workflow;
-        
-        set({ loading: false });
-        return workflow;
-      }
-      
+      const workflow = workflowsData.find(w => w.id === id) || null;
       set({ loading: false });
-      return null;
+      return workflow;
     } catch (error) {
       set({ error: (error as Error).message, loading: false });
       return null;
@@ -80,16 +58,14 @@ export const useWorkflowStore = create<WorkflowState>((set, get) => ({
   createWorkflow: async (workflow: Omit<Workflow, 'id'>) => {
     try {
       set({ loading: true, error: null });
-      
-      const docRef = await addDoc(collection(db, 'workflows'), workflow);
-      const newWorkflow = { id: docRef.id, ...workflow } as Workflow;
-      
+      const id = String(nextWorkflowId++);
+      const newWorkflow = { id, ...workflow } as Workflow;
+      workflowsData.push(newWorkflow);
       set((state) => ({
         workflows: [...state.workflows, newWorkflow],
         loading: false,
       }));
-      
-      return docRef.id;
+      return id;
     } catch (error) {
       set({ error: (error as Error).message, loading: false });
       throw error;
@@ -99,9 +75,9 @@ export const useWorkflowStore = create<WorkflowState>((set, get) => ({
   updateWorkflow: async (id: string, data: Partial<Workflow>) => {
     try {
       set({ loading: true, error: null });
-      
-      await updateDoc(doc(db, 'workflows', id), data);
-      
+      workflowsData = workflowsData.map(workflow =>
+        workflow.id === id ? { ...workflow, ...data } : workflow
+      );
       set((state) => ({
         workflows: state.workflows.map((workflow) =>
           workflow.id === id ? { ...workflow, ...data } : workflow
@@ -117,9 +93,7 @@ export const useWorkflowStore = create<WorkflowState>((set, get) => ({
   deleteWorkflow: async (id: string) => {
     try {
       set({ loading: true, error: null });
-      
-      await deleteDoc(doc(db, 'workflows', id));
-      
+      workflowsData = workflowsData.filter(workflow => workflow.id !== id);
       set((state) => ({
         workflows: state.workflows.filter((workflow) => workflow.id !== id),
         loading: false,
@@ -130,24 +104,10 @@ export const useWorkflowStore = create<WorkflowState>((set, get) => ({
     }
   },
   
-  // User workflow actions
-  fetchUserWorkflows: async (userId: string) => {
+  fetchUserWorkflows: async () => {
     try {
       set({ loading: true, error: null });
-      
-      const userWorkflowsCollection = collection(db, 'userWorkflows');
-      const userWorkflowsQuery = query(userWorkflowsCollection, where('userId', '==', userId));
-      const querySnapshot = await getDocs(userWorkflowsQuery);
-      
-      const userWorkflows: UserWorkflow[] = [];
-      querySnapshot.forEach((doc) => {
-        userWorkflows.push({
-          id: doc.id,
-          ...doc.data(),
-        } as UserWorkflow);
-      });
-      
-      set({ userWorkflows, loading: false });
+      set({ userWorkflows: userWorkflowsData, loading: false });
     } catch (error) {
       set({ error: (error as Error).message, loading: false });
     }
@@ -156,40 +116,28 @@ export const useWorkflowStore = create<WorkflowState>((set, get) => ({
   getUserWorkflowById: async (id: string) => {
     try {
       set({ loading: true, error: null });
-      
-      const userWorkflowDoc = await getDoc(doc(db, 'userWorkflows', id));
-      
-      if (userWorkflowDoc.exists()) {
-        const userWorkflow = {
-          id: userWorkflowDoc.id,
-          ...userWorkflowDoc.data(),
-        } as UserWorkflow;
-        
-        set({ loading: false });
-        return userWorkflow;
-      }
-      
+      const userWorkflow = userWorkflowsData.find(w => w.id === id) || null;
       set({ loading: false });
-      return null;
+      return userWorkflow;
     } catch (error) {
       set({ error: (error as Error).message, loading: false });
       return null;
     }
   },
   
-  startWorkflow: async (workflowId: string, userId: string, parameters: Record<string, any>) => {
+  startWorkflow: async (workflowId: string, parameters: Record<string, any>) => {
     try {
       set({ loading: true, error: null });
       
-      // Get workflow to determine first step
       const workflow = await get().getWorkflowById(workflowId);
       
       if (!workflow || !workflow.steps.length) {
         throw new Error('Workflow not found or has no steps');
       }
       
-      const userWorkflow: Omit<UserWorkflow, 'id'> = {
-        userId,
+      const id = String(nextUserWorkflowId++);
+      const userWorkflow: UserWorkflow = {
+        id,
         workflowId,
         parameters,
         startedAt: new Date().toISOString(),
@@ -197,15 +145,13 @@ export const useWorkflowStore = create<WorkflowState>((set, get) => ({
         status: 'in-progress',
       };
       
-      const docRef = await addDoc(collection(db, 'userWorkflows'), userWorkflow);
-      const newUserWorkflow = { id: docRef.id, ...userWorkflow } as UserWorkflow;
-      
+      userWorkflowsData.push(userWorkflow);
       set((state) => ({
-        userWorkflows: [...state.userWorkflows, newUserWorkflow],
+        userWorkflows: [...state.userWorkflows, userWorkflow],
         loading: false,
       }));
       
-      return docRef.id;
+      return id;
     } catch (error) {
       set({ error: (error as Error).message, loading: false });
       throw error;
@@ -215,9 +161,9 @@ export const useWorkflowStore = create<WorkflowState>((set, get) => ({
   updateUserWorkflow: async (id: string, data: Partial<UserWorkflow>) => {
     try {
       set({ loading: true, error: null });
-      
-      await updateDoc(doc(db, 'userWorkflows', id), data);
-      
+      userWorkflowsData = userWorkflowsData.map(userWorkflow =>
+        userWorkflow.id === id ? { ...userWorkflow, ...data } : userWorkflow
+      );
       set((state) => ({
         userWorkflows: state.userWorkflows.map((userWorkflow) =>
           userWorkflow.id === id ? { ...userWorkflow, ...data } : userWorkflow
@@ -235,11 +181,13 @@ export const useWorkflowStore = create<WorkflowState>((set, get) => ({
       set({ loading: true, error: null });
       
       const completionData = {
-        status: 'completed',
+        status: 'completed' as const,
         completedAt: new Date().toISOString(),
       };
       
-      await updateDoc(doc(db, 'userWorkflows', id), completionData);
+      userWorkflowsData = userWorkflowsData.map(userWorkflow =>
+        userWorkflow.id === id ? { ...userWorkflow, ...completionData } : userWorkflow
+      );
       
       set((state) => ({
         userWorkflows: state.userWorkflows.map((userWorkflow) =>

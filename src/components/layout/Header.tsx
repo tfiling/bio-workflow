@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import { Menu, X, FlaskRound as Flask, Search, LogOut, User, Menu as MenuIcon } from 'lucide-react';
+import { Menu, X, FlaskRound as Flask, Search } from 'lucide-react';
 import { Button } from '../ui/Button';
 import { useAuth } from '../../hooks/useAuth';
 import { Input } from '../ui/Input';
@@ -8,7 +8,7 @@ import { Input } from '../ui/Input';
 export function Header() {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [isSearchOpen, setIsSearchOpen] = useState(false);
-  const { user, signOut } = useAuth();
+  const { user } = useAuth();
   const location = useLocation();
 
   const isActive = (path: string) => {
@@ -56,30 +56,26 @@ export function Header() {
               >
                 Workflows
               </Link>
-              {user && (
-                <Link
-                  to="/dashboard"
-                  className={`px-3 py-2 text-sm font-medium rounded-md ${
-                    isActive('/dashboard') 
-                      ? 'text-primary-600 bg-primary-50' 
-                      : 'text-gray-600 hover:text-gray-900 hover:bg-gray-50'
-                  }`}
-                >
-                  Dashboard
-                </Link>
-              )}
-              {user?.role === 'admin' && (
-                <Link
-                  to="/admin"
-                  className={`px-3 py-2 text-sm font-medium rounded-md ${
-                    isActive('/admin') 
-                      ? 'text-primary-600 bg-primary-50' 
-                      : 'text-gray-600 hover:text-gray-900 hover:bg-gray-50'
-                  }`}
-                >
-                  Admin
-                </Link>
-              )}
+              <Link
+                to="/dashboard"
+                className={`px-3 py-2 text-sm font-medium rounded-md ${
+                  isActive('/dashboard') 
+                    ? 'text-primary-600 bg-primary-50' 
+                    : 'text-gray-600 hover:text-gray-900 hover:bg-gray-50'
+                }`}
+              >
+                Dashboard
+              </Link>
+              <Link
+                to="/admin"
+                className={`px-3 py-2 text-sm font-medium rounded-md ${
+                  isActive('/admin') 
+                    ? 'text-primary-600 bg-primary-50' 
+                    : 'text-gray-600 hover:text-gray-900 hover:bg-gray-50'
+                }`}
+              >
+                Admin
+              </Link>
             </nav>
           </div>
 
@@ -93,54 +89,11 @@ export function Header() {
               <Search className="h-5 w-5" />
             </button>
 
-            {/* Auth buttons */}
+            {/* User info */}
             <div className="hidden md:ml-4 md:flex md:items-center">
-              {user ? (
-                <div className="flex items-center">
-                  <Link to="/profile" className="relative">
-                    <Button variant="outline" size="sm" leftIcon={<User className="h-4 w-4" />}>
-                      Profile
-                    </Button>
-                  </Link>
-                  <Button 
-                    variant="ghost" 
-                    size="sm" 
-                    className="ml-2"
-                    onClick={() => signOut()}
-                    leftIcon={<LogOut className="h-4 w-4" />}
-                  >
-                    Sign Out
-                  </Button>
-                </div>
-              ) : (
-                <div className="flex items-center space-x-2">
-                  <Link to="/login">
-                    <Button variant="outline" size="sm">
-                      Log In
-                    </Button>
-                  </Link>
-                  <Link to="/signup">
-                    <Button variant="primary" size="sm">
-                      Sign Up
-                    </Button>
-                  </Link>
-                </div>
-              )}
-            </div>
-
-            {/* Mobile menu button */}
-            <div className="flex md:hidden">
-              <button
-                onClick={toggleMenu}
-                className="inline-flex items-center justify-center p-2 rounded-md text-gray-500 hover:text-gray-600 hover:bg-gray-100 focus:outline-none focus:ring-2 focus:ring-inset focus:ring-primary-500"
-              >
-                <span className="sr-only">Open main menu</span>
-                {isMenuOpen ? (
-                  <X className="block h-6 w-6" aria-hidden="true" />
-                ) : (
-                  <MenuIcon className="block h-6 w-6" aria-hidden="true" />
-                )}
-              </button>
+              <span className="text-sm text-gray-700">
+                Welcome, {user.displayName}
+              </span>
             </div>
           </div>
         </div>
@@ -188,65 +141,28 @@ export function Header() {
             >
               Workflows
             </Link>
-            {user && (
-              <Link
-                to="/dashboard"
-                className={`block px-4 py-2 text-base font-medium ${
-                  isActive('/dashboard') 
-                    ? 'text-primary-600 bg-primary-50' 
-                    : 'text-gray-600 hover:text-gray-900 hover:bg-gray-50'
-                }`}
-                onClick={() => setIsMenuOpen(false)}
-              >
-                Dashboard
-              </Link>
-            )}
-            {user?.role === 'admin' && (
-              <Link
-                to="/admin"
-                className={`block px-4 py-2 text-base font-medium ${
-                  isActive('/admin') 
-                    ? 'text-primary-600 bg-primary-50' 
-                    : 'text-gray-600 hover:text-gray-900 hover:bg-gray-50'
-                }`}
-                onClick={() => setIsMenuOpen(false)}
-              >
-                Admin
-              </Link>
-            )}
-            {!user ? (
-              <div className="px-4 py-3 space-y-2">
-                <Link to="/login" onClick={() => setIsMenuOpen(false)}>
-                  <Button variant="outline" fullWidth>
-                    Log In
-                  </Button>
-                </Link>
-                <Link to="/signup" onClick={() => setIsMenuOpen(false)}>
-                  <Button variant="primary" fullWidth>
-                    Sign Up
-                  </Button>
-                </Link>
-              </div>
-            ) : (
-              <div className="px-4 py-3 space-y-2">
-                <Link to="/profile" onClick={() => setIsMenuOpen(false)}>
-                  <Button variant="outline" fullWidth leftIcon={<User className="h-4 w-4" />}>
-                    Profile
-                  </Button>
-                </Link>
-                <Button 
-                  variant="ghost" 
-                  fullWidth
-                  onClick={() => {
-                    signOut();
-                    setIsMenuOpen(false);
-                  }}
-                  leftIcon={<LogOut className="h-4 w-4" />}
-                >
-                  Sign Out
-                </Button>
-              </div>
-            )}
+            <Link
+              to="/dashboard"
+              className={`block px-4 py-2 text-base font-medium ${
+                isActive('/dashboard') 
+                  ? 'text-primary-600 bg-primary-50' 
+                  : 'text-gray-600 hover:text-gray-900 hover:bg-gray-50'
+              }`}
+              onClick={() => setIsMenuOpen(false)}
+            >
+              Dashboard
+            </Link>
+            <Link
+              to="/admin"
+              className={`block px-4 py-2 text-base font-medium ${
+                isActive('/admin') 
+                  ? 'text-primary-600 bg-primary-50' 
+                  : 'text-gray-600 hover:text-gray-900 hover:bg-gray-50'
+              }`}
+              onClick={() => setIsMenuOpen(false)}
+            >
+              Admin
+            </Link>
           </div>
         </div>
       )}

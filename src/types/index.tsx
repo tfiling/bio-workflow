@@ -1,9 +1,7 @@
 export interface User {
   id: string;
-  email: string;
   displayName: string;
-  role: 'admin' | 'user';
-  createdAt: string;
+  role: 'admin';
 }
 
 export interface WorkflowParameter {
@@ -47,7 +45,6 @@ export interface Workflow {
   subCategory?: string;
   difficulty: 'beginner' | 'intermediate' | 'advanced';
   estimatedTotalTime: string;
-  createdBy: string;
   createdAt: string;
   updatedAt: string;
   parameters: WorkflowParameter[];
@@ -57,7 +54,6 @@ export interface Workflow {
 
 export interface UserWorkflow {
   id: string;
-  userId: string;
   workflowId: string;
   startedAt: string;
   completedAt?: string;
