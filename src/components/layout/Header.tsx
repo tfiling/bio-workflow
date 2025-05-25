@@ -57,6 +57,16 @@ export function Header() {
                 Workflows
               </Link>
               <Link
+                to="/assays"
+                className={`px-3 py-2 text-sm font-medium rounded-md ${
+                  isActive('/assays') 
+                    ? 'text-primary-600 bg-primary-50' 
+                    : 'text-gray-600 hover:text-gray-900 hover:bg-gray-50'
+                }`}
+              >
+                Assays
+              </Link>
+              <Link
                 to="/dashboard"
                 className={`px-3 py-2 text-sm font-medium rounded-md ${
                   isActive('/dashboard') 
@@ -104,7 +114,7 @@ export function Header() {
             <div className="max-w-3xl mx-auto">
               <Input
                 type="text"
-                placeholder="Search workflows..."
+                placeholder="Search assays..."
                 fullWidth
                 leftIcon={<Search className="h-4 w-4" />}
                 className="bg-gray-50"
@@ -140,6 +150,17 @@ export function Header() {
               onClick={() => setIsMenuOpen(false)}
             >
               Workflows
+            </Link>
+            <Link
+              to="/assays"
+              className={`block px-4 py-2 text-base font-medium ${
+                isActive('/assays') 
+                  ? 'text-primary-600 bg-primary-50' 
+                  : 'text-gray-600 hover:text-gray-900 hover:bg-gray-50'
+              }`}
+              onClick={() => setIsMenuOpen(false)}
+            >
+              Assays
             </Link>
             <Link
               to="/dashboard"

@@ -3,6 +3,7 @@ import { HomePage } from './pages/HomePage';
 import { WorkflowsPage } from './pages/WorkflowsPage';
 import { DashboardPage } from './pages/DashboardPage';
 import { AdminPage } from './pages/AdminPage';
+import { AssaysPage } from './pages/AssaysPage';
 import { AuthProvider } from './hooks/useAuth';
 
 function App() {
@@ -12,6 +13,7 @@ function App() {
         <Routes>
           <Route path="/" element={<HomePage />} />
           <Route path="/workflows" element={<WorkflowsPage />} />
+          <Route path="/assays" element={<AssaysPage />} />
           <Route path="/dashboard" element={<DashboardPage />} />
           <Route path="/admin" element={<AdminPage />} />
           <Route path="*" element={<Navigate to="/" replace />} />
@@ -20,5 +22,3 @@ function App() {
     </AuthProvider>
   );
 }
-
-export default App;
