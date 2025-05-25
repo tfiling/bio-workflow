@@ -4,59 +4,86 @@ export interface User {
   role: 'admin';
 }
 
-export interface WorkflowParameter {
+export interface Project {
+  id: string;
+  title: string;
+  description: string;
+  objective: string;
+  startDate: string;
+  status: 'active' | 'completed' | 'archived';
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface Workflow {
+  id: string;
+  projectId: string;
+  title: string;
+  description: string;
+  hypothesis: string;
+  category: string;
+  difficulty: 'beginner' | 'intermediate' | 'advanced';
+  estimatedTotalTime: string;
+  createdAt: string;
+  updatedAt: string;
+  status: 'draft' | 'published' | 'archived';
+}
+
+export interface Assay {
+  id: string;
+  workflowId: string;
+  title: string;
+  description: string;
+  protocol: string;
+  materials: AssayMaterial[];
+  parameters: AssayParameter[];
+  estimatedTime: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface AssayMaterial {
+  id: string;
+  name: string;
+  quantity: string;
+  unit: string;
+  affiliateLink?: string;
+}
+
+export interface AssayParameter {
   id: string;
   name: string;
   description: string;
   type: 'text' | 'number' | 'select' | 'radio' | 'checkbox';
   required: boolean;
-  options?: string[]; // For select, radio, checkbox types
+  options?: string[];
   defaultValue?: string | number | boolean;
-  unit?: string; // For number types (e.g., "µL", "mg", "°C")
-  min?: number; // For number types
-  max?: number; // For number types
-  step?: number; // For number types
+  unit?: string;
+  min?: number;
+  max?: number;
+  step?: number;
 }
 
-export interface WorkflowStep {
+export interface Step {
   id: string;
+  assayId: string;
   title: string;
   description: string;
-  estimatedTime?: string; // e.g., "30 minutes"
+  estimatedTime: string;
   warning?: string;
   notes?: string;
-  materials?: WorkflowMaterial[];
-  calculationDependencies?: string[]; // IDs of parameters used in calculations
-  calculationFormula?: string; // Formula to calculate values based on parameters
-}
-
-export interface WorkflowMaterial {
-  id: string;
-  name: string;
-  quantity: string;
-  affiliateLink?: string;
-}
-
-export interface Workflow {
-  id: string;
-  title: string;
-  description: string;
-  category: string;
-  subCategory?: string;
-  difficulty: 'beginner' | 'intermediate' | 'advanced';
-  estimatedTotalTime: string;
-  createdAt: string;
-  updatedAt: string;
-  parameters: WorkflowParameter[];
-  steps: WorkflowStep[];
-  publishStatus: 'draft' | 'published' | 'archived';
+  order: number;
+  calculationDependencies?: string[];
+  calculationFormula?: string;
 }
 
 export interface UserWorkflow {
   id: string;
+  projectId: string;
   workflowId: string;
   startedAt: string;
   completedAt?: string;
+  currentAssayId: string;
   currentStepId: string;
   parameters: Record<string, string | number | boolean>;
   status: 'in-progress' | 'completed' | 'abandoned';
