@@ -19,7 +19,6 @@ export function HomePage() {
 
   useEffect(() => {
     if (workflows.length > 0) {
-      // Get up to 3 featured workflows
       setFeaturedWorkflows(workflows.slice(0, 3));
     }
   }, [workflows]);
@@ -37,15 +36,10 @@ export function HomePage() {
               Step-by-step guides for producing custom Plasmid DNA sections
               and other critical laboratory processes.
             </p>
-            <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
+            <div className="flex justify-center">
               <Link to="/workflows">
                 <Button size="lg" rightIcon={<ArrowRight className="h-5 w-5" />}>
                   Explore Workflows
-                </Button>
-              </Link>
-              <Link to="/signup">
-                <Button size="lg" variant="outline">
-                  Create Account
                 </Button>
               </Link>
             </div>
@@ -211,18 +205,11 @@ export function HomePage() {
             <p className="text-xl text-primary-100 mb-8">
               Join thousands of researchers who save time and reduce errors with our workflow platform.
             </p>
-            <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
-              <Link to="/signup">
-                <Button size="lg" variant="secondary">
-                  Sign Up for Free
-                </Button>
-              </Link>
-              <Link to="/workflows">
-                <Button size="lg" variant="outline" className="bg-transparent border-white text-white hover:bg-primary-600">
-                  Browse Workflows
-                </Button>
-              </Link>
-            </div>
+            <Link to="/workflows">
+              <Button size="lg" variant="secondary">
+                Browse Workflows
+              </Button>
+            </Link>
           </div>
         </div>
       </section>
