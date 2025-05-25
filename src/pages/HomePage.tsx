@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { ArrowRight, Search, FlaskRound as Flask, Beaker, Microscope, BookOpen } from 'lucide-react';
 import { AppLayout } from '../components/layout/AppLayout';
@@ -6,22 +6,14 @@ import { Button } from '../components/ui/Button';
 import { Input } from '../components/ui/Input';
 import { Card, CardContent } from '../components/ui/Card';
 import { useWorkflowStore } from '../store/workflowStore';
-import { Workflow } from '../types';
 import { truncateText } from '../lib/utils';
 
 export function HomePage() {
   const { workflows, fetchWorkflows, loading } = useWorkflowStore();
-  const [featuredWorkflows, setFeaturedWorkflows] = useState<Workflow[]>([]);
 
   useEffect(() => {
     fetchWorkflows();
   }, [fetchWorkflows]);
-
-  useEffect(() => {
-    if (workflows.length > 0) {
-      setFeaturedWorkflows(workflows.slice(0, 3));
-    }
-  }, [workflows]);
 
   return (
     <AppLayout>
@@ -72,12 +64,12 @@ export function HomePage() {
         </div>
       </section>
 
-      {/* Featured workflows */}
+      {/* All workflows */}
       <section className="py-16 bg-white">
         <div className="container mx-auto px-4 sm:px-6 lg:px-8">
           <div className="max-w-7xl mx-auto">
             <div className="flex justify-between items-center mb-8">
-              <h2 className="text-2xl font-bold text-gray-900">Featured Workflows</h2>
+              <h2 className="text-2xl font-bold text-gray-900">Available Workflows</h2>
               <Link to="/workflows" className="text-primary-500 hover:text-primary-600 flex items-center">
                 View all <ArrowRight className="h-4 w-4 ml-1" />
               </Link>
@@ -96,9 +88,9 @@ export function HomePage() {
                   </Card>
                 ))}
               </div>
-            ) : featuredWorkflows.length > 0 ? (
+            ) : workflows.length > 0 ? (
               <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                {featuredWorkflows.map((workflow) => (
+                {workflows.map((workflow) => (
                   <Link key={workflow.id} to={`/workflows/${workflow.id}`}>
                     <Card className="h-full transition-all duration-200 hover:shadow-elevated hover:-translate-y-1">
                       <CardContent className="h-full flex flex-col">
@@ -131,7 +123,7 @@ export function HomePage() {
               <div className="text-center py-12">
                 <Flask className="h-12 w-12 text-gray-400 mx-auto mb-4" />
                 <h3 className="text-lg font-medium text-gray-900 mb-2">No workflows available yet</h3>
-                <p className="text-gray-500 mb-6">Check back soon or create your own workflow.</p>
+                <p className="text-gray-500 mb-6">Create your first workflow to get started.</p>
                 <Link to="/admin/workflows/new">
                   <Button>Create Workflow</Button>
                 </Link>
