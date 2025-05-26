@@ -11,10 +11,6 @@
   },
   "dependencies": {
     "@hookform/resolvers": "^3.3.4",
-    "@reactflow/background": "^11.3.9",
-    "@reactflow/controls": "^11.3.9",
-    "@reactflow/core": "^11.3.9",
-    "@reactflow/minimap": "^11.3.9",
     "axios": "^1.6.7",
     "clsx": "^2.1.0",
     "date-fns": "^3.3.1",
