@@ -31,7 +31,6 @@ const parameterSchema = z.object({
 });
 
 const assaySchema = z.object({
-  workflowId: z.string().min(1, 'Workflow is required'),
   title: z.string().min(3, 'Title must be at least 3 characters'),
   description: z.string().min(10, 'Description must be at least 10 characters'),
   protocol: z.string().min(10, 'Protocol must be at least 10 characters'),
@@ -153,13 +152,6 @@ export function CreateAssayPage() {
                   {...register('estimatedTime')}
                   error={errors.estimatedTime?.message}
                   placeholder="e.g., 2 hours"
-                />
-
-                <Input
-                  label="Workflow ID"
-                  {...register('workflowId')}
-                  error={errors.workflowId?.message}
-                  placeholder="Associated workflow ID"
                 />
               </CardContent>
             </Card>
