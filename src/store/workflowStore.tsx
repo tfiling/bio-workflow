@@ -320,56 +320,228 @@ export const useWorkflowStore = create<WorkflowState>((set, get) => ({
   },
   
   // Step actions
-  fetchSteps,
-  getStepById,
-  createStep,
-  updateStep,
+  fetchSteps: async (assayId: string) => {
+    try {
+      set({ loading: true, error: null });
+      const { data: steps, error } = await supabase
+        .from('steps')
+        .select('*')
+        .eq('assay_id', assayId)
+        .order('order_index', { ascending: true });
+      
+      if (error) throw error;
+      set({ steps: steps || [], loading: false });
+    } catch (error) {
+      set({ error: (error as Error).message, loading: false });
+    }
+  },
+  
+  getStepById: async (id: string) => {
+    try {
+      const { data: step, error } = await supabase
+        .from('steps')
+        .select('*')
+        .eq('id', id)
+        .single();
+      
+      if (error) throw error;
+      return step;
+    } catch (error) {
+      set({ error: (error as Error).message });
+      return null;
+    }
+  },
+  
+  createStep: async (step) => {
+    try {
+      set({ loading: true, error: null });
+      const { data, error } = await supabase
+        .from('steps')
+        .insert([step])
+        .select()
+        .single();
+      
+      if (error) throw error;
+      set((state) => ({
+        steps: [...state.steps, data],
+        loading: false,
+      }));
+      return data.id;
+    } catch (error) {
+      set({ error: (error as Error).message, loading: false });
+      throw error;
+    }
+  },
+  
+  updateStep: async (id: string, data: Partial<Step>) => {
+    try {
+      set({ loading: true, error: null });
+      const { error } = await supabase
+        .from('steps')
+        .update(data)
+        .eq('id', id);
+      
+      if (error) throw error;
+      set((state) => ({
+        steps: state.steps.map((step) =>
+          step.id === id ? { ...step, ...data } : step
+        ),
+        loading: false,
+      }));
+    } catch (error) {
+      set({ error: (error as Error).message, loading: false });
+      throw error;
+    }
+  },
   
   // User workflow actions
-  fetchUserWorkflows,
-  getUserWorkflowById,
-  startWorkflow,
-  updateUserWorkflow,
-  completeUserWorkflow,
+  fetchUserWorkflows: async () => {
+    try {
+      set({ loading: true, error: null });
+      
+      const { data: user } = await supabase.auth.getUser();
+      if (!user.user) throw new Error('User not authenticated');
+
+      const { data: userWorkflows, error } = await supabase
+        .from('user_workflows')
+        .select('*')
+        .eq('user_id', user.user.id)
+        .order('created_at', { ascending: false });
+      
+      if (error) throw error;
+      set({ userWorkflows: userWorkflows || [], loading: false });
+    } catch (error) {
+      set({ error: (error as Error).message, loading: false });
+    }
+  },
+  
+  getUserWorkflowById: async (id: string) => {
+    try {
+      const { data: userWorkflow, error } = await supabase
+        .from('user_workflows')
+        .select('*')
+        .eq('id', id)
+        .single();
+      
+      if (error) throw error;
+      return userWorkflow;
+    } catch (error) {
+      set({ error: (error as Error).message });
+      return null;
+    }
+  },
+  
+  startWorkflow: async (workflowId: string, parameters: Record<string, any>) => {
+    try {
+      set({ loading: true, error: null });
+      
+      const { data: user } = await supabase.auth.getUser();
+      if (!user.user) throw new Error('User not authenticated');
+
+      // Get the workflow and its first assay
+      const { data: workflow, error: workflowError } = await supabase
+        .from('workflows')
+        .select(`
+          *,
+          workflow_assays!inner (
+            assay_id,
+            assays!inner (
+              id,
+              steps!inner (
+                id
+              )
+            )
+          )
+        `)
+        .eq('id', workflowId)
+        .single();
+
+      if (workflowError) throw workflowError;
+
+      const firstAssay = workflow.workflow_assays[0]?.assays;
+      const firstStep = firstAssay?.steps[0];
+
+      if (!firstAssay || !firstStep) {
+        throw new Error('Workflow has no assays or steps');
+      }
+
+      const { data: userWorkflow, error: createError } = await supabase
+        .from('user_workflows')
+        .insert([{
+          workflow_id: workflowId,
+          user_id: user.user.id,
+          current_assay_id: firstAssay.id,
+          current_step_id: firstStep.id,
+          parameters,
+          status: 'in-progress'
+        }])
+        .select()
+        .single();
+      
+      if (createError) throw createError;
+      
+      set((state) => ({
+        userWorkflows: [userWorkflow, ...state.userWorkflows],
+        loading: false,
+      }));
+      
+      return userWorkflow.id;
+    } catch (error) {
+      set({ error: (error as Error).message, loading: false });
+      throw error;
+    }
+  },
+  
+  updateUserWorkflow: async (id: string, data: Partial<UserWorkflow>) => {
+    try {
+      set({ loading: true, error: null });
+      const { error } = await supabase
+        .from('user_workflows')
+        .update(data)
+        .eq('id', id);
+      
+      if (error) throw error;
+      set((state) => ({
+        userWorkflows: state.userWorkflows.map((userWorkflow) =>
+          userWorkflow.id === id ? { ...userWorkflow, ...data } : userWorkflow
+        ),
+        loading: false,
+      }));
+    } catch (error) {
+      set({ error: (error as Error).message, loading: false });
+      throw error;
+    }
+  },
+  
+  completeUserWorkflow: async (id: string) => {
+    try {
+      set({ loading: true, error: null });
+      
+      const { error } = await supabase
+        .from('user_workflows')
+        .update({
+          status: 'completed',
+          completed_at: new Date().toISOString(),
+        })
+        .eq('id', id);
+      
+      if (error) throw error;
+      
+      set((state) => ({
+        userWorkflows: state.userWorkflows.map((userWorkflow) =>
+          userWorkflow.id === id
+            ? {
+                ...userWorkflow,
+                status: 'completed',
+                completedAt: new Date().toISOString(),
+              }
+            : userWorkflow
+        ),
+        loading: false,
+      }));
+    } catch (error) {
+      set({ error: (error as Error).message, loading: false });
+      throw error;
+    }
+  },
 }));
-
-// Helper functions for steps and user workflows
-async function fetchSteps(assayId: string) {
-  // Implementation for steps will be added later
-}
-
-async function getStepById(id: string) {
-  // Implementation for steps will be added later
-  return null;
-}
-
-async function createStep(step: Omit<Step, 'id'>) {
-  // Implementation for steps will be added later
-  return '';
-}
-
-async function updateStep(id: string, data: Partial<Step>) {
-  // Implementation for steps will be added later
-}
-
-async function fetchUserWorkflows() {
-  // Implementation for user workflows will be added later
-}
-
-async function getUserWorkflowById(id: string) {
-  // Implementation for user workflows will be added later
-  return null;
-}
-
-async function startWorkflow(workflowId: string, parameters: Record<string, any>) {
-  // Implementation for user workflows will be added later
-  return '';
-}
-
-async function updateUserWorkflow(id: string, data: Partial<UserWorkflow>) {
-  // Implementation for user workflows will be added later
-}
-
-async function completeUserWorkflow(id: string) {
-  // Implementation for user workflows will be added later
-}
