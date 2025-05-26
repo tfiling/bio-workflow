@@ -34,8 +34,7 @@ const parameterSchema = z.object({
 const stepSchema = z.object({
   title: z.string(),
   description: z.string(),
-  hours: z.number().min(0),
-  minutes: z.number().min(0).max(59),
+  duration: z.string().regex(/^\d{2}:\d{2}$/, 'Duration must be in HH:MM format'),
   warning: z.string().optional(),
   notes: z.string().optional(),
   calculationDependencies: z.array(z.string()).optional(),
@@ -111,8 +110,7 @@ export function CreateAssayPage() {
       {
         title: '',
         description: '',
-        hours: 0,
-        minutes: 0,
+        duration: '00:00',
         warning: '',
         notes: '',
         calculationDependencies: [],
@@ -128,7 +126,7 @@ export function CreateAssayPage() {
   const updateStep = (
     index: number,
     field: keyof z.infer<typeof stepSchema>,
-    value: string | number | string[]
+    value: string | string[]
   ) => {
     const updatedSteps = [...steps];
     updatedSteps[index] = { ...updatedSteps[index], [field]: value };
@@ -136,15 +134,15 @@ export function CreateAssayPage() {
   };
 
   const setStepDuration = (index: number, totalMinutes: number) => {
-    const hours = Math.floor(totalMinutes / 60);
-    const minutes = totalMinutes % 60;
-    updateStep(index, 'hours', hours);
-    updateStep(index, 'minutes', minutes);
+    const hours = Math.floor(totalMinutes / 60).toString().padStart(2, '0');
+    const minutes = (totalMinutes % 60).toString().padStart(2, '0');
+    updateStep(index, 'duration', `${hours}:${minutes}`);
   };
 
   const calculateTotalTime = () => {
     const totalMinutes = steps.reduce((total, step) => {
-      return total + (step.hours * 60) + step.minutes;
+      const [hours, minutes] = step.duration.split(':').map(Number);
+      return total + (hours * 60) + minutes;
     }, 0);
     
     const hours = Math.floor(totalMinutes / 60);
@@ -160,11 +158,14 @@ export function CreateAssayPage() {
         estimatedTime: calculateTotalTime(),
         materials,
         parameters,
-        steps: steps.map((step, index) => ({
-          ...step,
-          order: index + 1,
-          estimatedTime: `${step.hours} hour${step.hours !== 1 ? 's' : ''} ${step.minutes} minute${step.minutes !== 1 ? 's' : ''}`.trim()
-        })),
+        steps: steps.map((step, index) => {
+          const [hours, minutes] = step.duration.split(':').map(Number);
+          return {
+            ...step,
+            order: index + 1,
+            estimatedTime: `${hours} hour${hours !== 1 ? 's' : ''} ${minutes} minute${minutes !== 1 ? 's' : ''}`.trim()
+          };
+        }),
       });
       navigate('/assays');
     } catch (error) {
@@ -342,33 +343,22 @@ export function CreateAssayPage() {
                       />
                       
                       <div className="space-y-4">
-                        <div className="flex items-center gap-4">
-                          <div className="flex-1">
-                            <label className="block text-sm font-medium text-gray-700 mb-1">
-                              Duration
-                            </label>
-                            <div className="flex gap-4">
-                              <div className="flex-1">
-                                <label className="block text-sm text-gray-600 mb-1">Hours</label>
-                                <Input
-                                  type="number"
-                                  min="0"
-                                  value={step.hours}
-                                  onChange={(e) => updateStep(index, 'hours', parseInt(e.target.value) || 0)}
-                                />
-                              </div>
-                              <div className="flex-1">
-                                <label className="block text-sm text-gray-600 mb-1">Minutes</label>
-                                <Input
-                                  type="number"
-                                  min="0"
-                                  max="59"
-                                  value={step.minutes}
-                                  onChange={(e) => updateStep(index, 'minutes', parseInt(e.target.value) || 0)}
-                                />
-                              </div>
-                            </div>
-                          </div>
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 mb-1">
+                            Duration (HH:MM)
+                          </label>
+                          <Input
+                            type="text"
+                            pattern="[0-9]{2}:[0-9]{2}"
+                            placeholder="00:00"
+                            value={step.duration}
+                            onChange={(e) => {
+                              const value = e.target.value;
+                              if (/^\d{0,2}:\d{0,2}$/.test(value)) {
+                                updateStep(index, 'duration', value);
+                              }
+                            }}
+                          />
                         </div>
                         
                         <div>
@@ -379,7 +369,10 @@ export function CreateAssayPage() {
                             type="range"
                             min="0"
                             max="480"
-                            value={step.hours * 60 + step.minutes}
+                            value={(() => {
+                              const [hours, minutes] = step.duration.split(':').map(Number);
+                              return (hours * 60) + minutes;
+                            })()}
                             onChange={(e) => setStepDuration(index, parseInt(e.target.value))}
                             className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer"
                           />
