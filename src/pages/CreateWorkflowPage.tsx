@@ -24,8 +24,8 @@ import 'reactflow/dist/style.css';
 
 const workflowSchema = z.object({
   title: z.string().min(3, 'Title must be at least 3 characters'),
-  description: z.string().min(10, 'Description must be at least 10 characters'),
-  category: z.string().min(1, 'Category is required'),
+  description: z.string().optional(),
+  category: z.string().optional(),
   difficulty: z.enum(['beginner', 'intermediate', 'advanced']),
 });
 
@@ -102,6 +102,8 @@ export function CreateWorkflowPage() {
     try {
       const workflowData = {
         ...data,
+        description: data.description || '',
+        category: data.category || '',
         assayDependencies: edges.map((edge) => ({
           fromAssayId: edge.source.replace('assay-', ''),
           toAssayId: edge.target.replace('assay-', ''),
@@ -145,14 +147,14 @@ export function CreateWorkflowPage() {
                   />
 
                   <Input
-                    label="Description"
+                    label="Description (optional)"
                     {...register('description')}
                     error={errors.description?.message}
                     placeholder="Detailed description of the workflow"
                   />
 
                   <Input
-                    label="Category"
+                    label="Category (optional)"
                     {...register('category')}
                     error={errors.category?.message}
                     placeholder="e.g., Molecular Biology"
