@@ -1,4 +1,5 @@
 import { create } from 'zustand';
+import { supabase } from '../lib/supabase';
 import { Project, Workflow, Assay, Step, UserWorkflow } from '../types';
 
 interface WorkflowState {
@@ -17,13 +18,13 @@ interface WorkflowState {
   updateProject: (id: string, data: Partial<Project>) => Promise<void>;
   
   // Workflow actions
-  fetchWorkflows: (projectId: string) => Promise<void>;
+  fetchWorkflows: () => Promise<void>;
   getWorkflowById: (id: string) => Promise<Workflow | null>;
   createWorkflow: (workflow: Omit<Workflow, 'id' | 'createdAt' | 'updatedAt'>) => Promise<string>;
   updateWorkflow: (id: string, data: Partial<Workflow>) => Promise<void>;
   
   // Assay actions
-  fetchAssays: (workflowId: string) => Promise<void>;
+  fetchAssays: () => Promise<void>;
   getAssayById: (id: string) => Promise<Assay | null>;
   createAssay: (assay: Omit<Assay, 'id' | 'createdAt' | 'updatedAt'>) => Promise<string>;
   updateAssay: (id: string, data: Partial<Assay>) => Promise<void>;
@@ -35,21 +36,12 @@ interface WorkflowState {
   updateStep: (id: string, data: Partial<Step>) => Promise<void>;
   
   // User workflow actions
-  fetchUserWorkflows: (projectId: string) => Promise<void>;
+  fetchUserWorkflows: () => Promise<void>;
   getUserWorkflowById: (id: string) => Promise<UserWorkflow | null>;
-  startWorkflow: (projectId: string, workflowId: string, parameters: Record<string, any>) => Promise<string>;
+  startWorkflow: (workflowId: string, parameters: Record<string, any>) => Promise<string>;
   updateUserWorkflow: (id: string, data: Partial<UserWorkflow>) => Promise<void>;
   completeUserWorkflow: (id: string) => Promise<void>;
 }
-
-// In-memory storage for demo purposes
-let projectsData: Project[] = [];
-let workflowsData: Workflow[] = [];
-let assaysData: Assay[] = [];
-let stepsData: Step[] = [];
-let userWorkflowsData: UserWorkflow[] = [];
-
-let nextId = 1;
 
 export const useWorkflowStore = create<WorkflowState>((set, get) => ({
   projects: [],
@@ -64,7 +56,13 @@ export const useWorkflowStore = create<WorkflowState>((set, get) => ({
   fetchProjects: async () => {
     try {
       set({ loading: true, error: null });
-      set({ projects: projectsData, loading: false });
+      const { data: projects, error } = await supabase
+        .from('projects')
+        .select('*')
+        .order('created_at', { ascending: false });
+      
+      if (error) throw error;
+      set({ projects: projects || [], loading: false });
     } catch (error) {
       set({ error: (error as Error).message, loading: false });
     }
@@ -72,7 +70,13 @@ export const useWorkflowStore = create<WorkflowState>((set, get) => ({
   
   getProjectById: async (id: string) => {
     try {
-      const project = projectsData.find(p => p.id === id) || null;
+      const { data: project, error } = await supabase
+        .from('projects')
+        .select('*')
+        .eq('id', id)
+        .single();
+      
+      if (error) throw error;
       return project;
     } catch (error) {
       set({ error: (error as Error).message });
@@ -83,21 +87,18 @@ export const useWorkflowStore = create<WorkflowState>((set, get) => ({
   createProject: async (project) => {
     try {
       set({ loading: true, error: null });
-      const id = String(nextId++);
-      const timestamp = new Date().toISOString();
-      const newProject = {
-        id,
-        ...project,
-        createdAt: timestamp,
-        updatedAt: timestamp,
-      } as Project;
+      const { data, error } = await supabase
+        .from('projects')
+        .insert([project])
+        .select()
+        .single();
       
-      projectsData.push(newProject);
+      if (error) throw error;
       set((state) => ({
-        projects: [...state.projects, newProject],
+        projects: [data, ...state.projects],
         loading: false,
       }));
-      return id;
+      return data.id;
     } catch (error) {
       set({ error: (error as Error).message, loading: false });
       throw error;
@@ -107,13 +108,15 @@ export const useWorkflowStore = create<WorkflowState>((set, get) => ({
   updateProject: async (id: string, data: Partial<Project>) => {
     try {
       set({ loading: true, error: null });
-      const timestamp = new Date().toISOString();
-      projectsData = projectsData.map(project =>
-        project.id === id ? { ...project, ...data, updatedAt: timestamp } : project
-      );
+      const { error } = await supabase
+        .from('projects')
+        .update(data)
+        .eq('id', id);
+      
+      if (error) throw error;
       set((state) => ({
         projects: state.projects.map((project) =>
-          project.id === id ? { ...project, ...data, updatedAt: timestamp } : project
+          project.id === id ? { ...project, ...data } : project
         ),
         loading: false,
       }));
@@ -124,11 +127,16 @@ export const useWorkflowStore = create<WorkflowState>((set, get) => ({
   },
   
   // Workflow actions
-  fetchWorkflows: async (projectId: string) => {
+  fetchWorkflows: async () => {
     try {
       set({ loading: true, error: null });
-      const filteredWorkflows = workflowsData.filter(w => w.projectId === projectId);
-      set({ workflows: filteredWorkflows, loading: false });
+      const { data: workflows, error } = await supabase
+        .from('workflows')
+        .select('*')
+        .order('created_at', { ascending: false });
+      
+      if (error) throw error;
+      set({ workflows: workflows || [], loading: false });
     } catch (error) {
       set({ error: (error as Error).message, loading: false });
     }
@@ -136,7 +144,13 @@ export const useWorkflowStore = create<WorkflowState>((set, get) => ({
   
   getWorkflowById: async (id: string) => {
     try {
-      const workflow = workflowsData.find(w => w.id === id) || null;
+      const { data: workflow, error } = await supabase
+        .from('workflows')
+        .select('*')
+        .eq('id', id)
+        .single();
+      
+      if (error) throw error;
       return workflow;
     } catch (error) {
       set({ error: (error as Error).message });
@@ -147,21 +161,56 @@ export const useWorkflowStore = create<WorkflowState>((set, get) => ({
   createWorkflow: async (workflow) => {
     try {
       set({ loading: true, error: null });
-      const id = String(nextId++);
-      const timestamp = new Date().toISOString();
-      const newWorkflow = {
-        id,
-        ...workflow,
-        createdAt: timestamp,
-        updatedAt: timestamp,
-      } as Workflow;
       
-      workflowsData.push(newWorkflow);
+      const { data: user } = await supabase.auth.getUser();
+      if (!user.user) throw new Error('User not authenticated');
+
+      const { data: workflowData, error: workflowError } = await supabase
+        .from('workflows')
+        .insert([{
+          ...workflow,
+          user_id: user.user.id
+        }])
+        .select()
+        .single();
+      
+      if (workflowError) throw workflowError;
+
+      // Insert workflow assays
+      if (workflow.assays?.length) {
+        const workflowAssays = workflow.assays.map(assayId => ({
+          workflow_id: workflowData.id,
+          assay_id: assayId
+        }));
+
+        const { error: assayError } = await supabase
+          .from('workflow_assays')
+          .insert(workflowAssays);
+
+        if (assayError) throw assayError;
+      }
+
+      // Insert assay dependencies
+      if (workflow.assayDependencies?.length) {
+        const dependencies = workflow.assayDependencies.map(dep => ({
+          workflow_id: workflowData.id,
+          from_assay_id: dep.fromAssayId,
+          to_assay_id: dep.toAssayId
+        }));
+
+        const { error: depError } = await supabase
+          .from('assay_dependencies')
+          .insert(dependencies);
+
+        if (depError) throw depError;
+      }
+
       set((state) => ({
-        workflows: [...state.workflows, newWorkflow],
+        workflows: [workflowData, ...state.workflows],
         loading: false,
       }));
-      return id;
+      
+      return workflowData.id;
     } catch (error) {
       set({ error: (error as Error).message, loading: false });
       throw error;
@@ -171,13 +220,15 @@ export const useWorkflowStore = create<WorkflowState>((set, get) => ({
   updateWorkflow: async (id: string, data: Partial<Workflow>) => {
     try {
       set({ loading: true, error: null });
-      const timestamp = new Date().toISOString();
-      workflowsData = workflowsData.map(workflow =>
-        workflow.id === id ? { ...workflow, ...data, updatedAt: timestamp } : workflow
-      );
+      const { error } = await supabase
+        .from('workflows')
+        .update(data)
+        .eq('id', id);
+      
+      if (error) throw error;
       set((state) => ({
         workflows: state.workflows.map((workflow) =>
-          workflow.id === id ? { ...workflow, ...data, updatedAt: timestamp } : workflow
+          workflow.id === id ? { ...workflow, ...data } : workflow
         ),
         loading: false,
       }));
@@ -188,11 +239,16 @@ export const useWorkflowStore = create<WorkflowState>((set, get) => ({
   },
   
   // Assay actions
-  fetchAssays: async (workflowId: string) => {
+  fetchAssays: async () => {
     try {
       set({ loading: true, error: null });
-      const filteredAssays = assaysData.filter(a => a.workflowId === workflowId);
-      set({ assays: filteredAssays, loading: false });
+      const { data: assays, error } = await supabase
+        .from('assays')
+        .select('*')
+        .order('created_at', { ascending: false });
+      
+      if (error) throw error;
+      set({ assays: assays || [], loading: false });
     } catch (error) {
       set({ error: (error as Error).message, loading: false });
     }
@@ -200,7 +256,13 @@ export const useWorkflowStore = create<WorkflowState>((set, get) => ({
   
   getAssayById: async (id: string) => {
     try {
-      const assay = assaysData.find(a => a.id === id) || null;
+      const { data: assay, error } = await supabase
+        .from('assays')
+        .select('*')
+        .eq('id', id)
+        .single();
+      
+      if (error) throw error;
       return assay;
     } catch (error) {
       set({ error: (error as Error).message });
@@ -211,21 +273,25 @@ export const useWorkflowStore = create<WorkflowState>((set, get) => ({
   createAssay: async (assay) => {
     try {
       set({ loading: true, error: null });
-      const id = String(nextId++);
-      const timestamp = new Date().toISOString();
-      const newAssay = {
-        id,
-        ...assay,
-        createdAt: timestamp,
-        updatedAt: timestamp,
-      } as Assay;
       
-      assaysData.push(newAssay);
+      const { data: user } = await supabase.auth.getUser();
+      if (!user.user) throw new Error('User not authenticated');
+
+      const { data, error } = await supabase
+        .from('assays')
+        .insert([{
+          ...assay,
+          user_id: user.user.id
+        }])
+        .select()
+        .single();
+      
+      if (error) throw error;
       set((state) => ({
-        assays: [...state.assays, newAssay],
+        assays: [data, ...state.assays],
         loading: false,
       }));
-      return id;
+      return data.id;
     } catch (error) {
       set({ error: (error as Error).message, loading: false });
       throw error;
@@ -235,13 +301,15 @@ export const useWorkflowStore = create<WorkflowState>((set, get) => ({
   updateAssay: async (id: string, data: Partial<Assay>) => {
     try {
       set({ loading: true, error: null });
-      const timestamp = new Date().toISOString();
-      assaysData = assaysData.map(assay =>
-        assay.id === id ? { ...assay, ...data, updatedAt: timestamp } : assay
-      );
+      const { error } = await supabase
+        .from('assays')
+        .update(data)
+        .eq('id', id);
+      
+      if (error) throw error;
       set((state) => ({
         assays: state.assays.map((assay) =>
-          assay.id === id ? { ...assay, ...data, updatedAt: timestamp } : assay
+          assay.id === id ? { ...assay, ...data } : assay
         ),
         loading: false,
       }));
@@ -252,170 +320,56 @@ export const useWorkflowStore = create<WorkflowState>((set, get) => ({
   },
   
   // Step actions
-  fetchSteps: async (assayId: string) => {
-    try {
-      set({ loading: true, error: null });
-      const filteredSteps = stepsData.filter(s => s.assayId === assayId);
-      set({ steps: filteredSteps, loading: false });
-    } catch (error) {
-      set({ error: (error as Error).message, loading: false });
-    }
-  },
-  
-  getStepById: async (id: string) => {
-    try {
-      const step = stepsData.find(s => s.id === id) || null;
-      return step;
-    } catch (error) {
-      set({ error: (error as Error).message });
-      return null;
-    }
-  },
-  
-  createStep: async (step) => {
-    try {
-      set({ loading: true, error: null });
-      const id = String(nextId++);
-      const newStep = { id, ...step } as Step;
-      
-      stepsData.push(newStep);
-      set((state) => ({
-        steps: [...state.steps, newStep],
-        loading: false,
-      }));
-      return id;
-    } catch (error) {
-      set({ error: (error as Error).message, loading: false });
-      throw error;
-    }
-  },
-  
-  updateStep: async (id: string, data: Partial<Step>) => {
-    try {
-      set({ loading: true, error: null });
-      stepsData = stepsData.map(step =>
-        step.id === id ? { ...step, ...data } : step
-      );
-      set((state) => ({
-        steps: state.steps.map((step) =>
-          step.id === id ? { ...step, ...data } : step
-        ),
-        loading: false,
-      }));
-    } catch (error) {
-      set({ error: (error as Error).message, loading: false });
-      throw error;
-    }
-  },
+  fetchSteps,
+  getStepById,
+  createStep,
+  updateStep,
   
   // User workflow actions
-  fetchUserWorkflows: async (projectId: string) => {
-    try {
-      set({ loading: true, error: null });
-      const filteredWorkflows = userWorkflowsData.filter(w => w.projectId === projectId);
-      set({ userWorkflows: filteredWorkflows, loading: false });
-    } catch (error) {
-      set({ error: (error as Error).message, loading: false });
-    }
-  },
-  
-  getUserWorkflowById: async (id: string) => {
-    try {
-      const userWorkflow = userWorkflowsData.find(w => w.id === id) || null;
-      return userWorkflow;
-    } catch (error) {
-      set({ error: (error as Error).message });
-      return null;
-    }
-  },
-  
-  startWorkflow: async (projectId: string, workflowId: string, parameters: Record<string, any>) => {
-    try {
-      set({ loading: true, error: null });
-      
-      const workflow = await get().getWorkflowById(workflowId);
-      if (!workflow) {
-        throw new Error('Workflow not found');
-      }
-      
-      const assays = assaysData.filter(a => a.workflowId === workflowId);
-      if (!assays.length) {
-        throw new Error('No assays found for workflow');
-      }
-      
-      const firstAssay = assays[0];
-      const steps = stepsData.filter(s => s.assayId === firstAssay.id);
-      if (!steps.length) {
-        throw new Error('No steps found for first assay');
-      }
-      
-      const id = String(nextId++);
-      const userWorkflow: UserWorkflow = {
-        id,
-        projectId,
-        workflowId,
-        parameters,
-        startedAt: new Date().toISOString(),
-        currentAssayId: firstAssay.id,
-        currentStepId: steps[0].id,
-        status: 'in-progress',
-      };
-      
-      userWorkflowsData.push(userWorkflow);
-      set((state) => ({
-        userWorkflows: [...state.userWorkflows, userWorkflow],
-        loading: false,
-      }));
-      
-      return id;
-    } catch (error) {
-      set({ error: (error as Error).message, loading: false });
-      throw error;
-    }
-  },
-  
-  updateUserWorkflow: async (id: string, data: Partial<UserWorkflow>) => {
-    try {
-      set({ loading: true, error: null });
-      userWorkflowsData = userWorkflowsData.map(userWorkflow =>
-        userWorkflow.id === id ? { ...userWorkflow, ...data } : userWorkflow
-      );
-      set((state) => ({
-        userWorkflows: state.userWorkflows.map((userWorkflow) =>
-          userWorkflow.id === id ? { ...userWorkflow, ...data } : userWorkflow
-        ),
-        loading: false,
-      }));
-    } catch (error) {
-      set({ error: (error as Error).message, loading: false });
-      throw error;
-    }
-  },
-  
-  completeUserWorkflow: async (id: string) => {
-    try {
-      set({ loading: true, error: null });
-      
-      const completionData = {
-        status: 'completed' as const,
-        completedAt: new Date().toISOString(),
-      };
-      
-      userWorkflowsData = userWorkflowsData.map(userWorkflow =>
-        userWorkflow.id === id ? { ...userWorkflow, ...completionData } : userWorkflow
-      );
-      
-      set((state) => ({
-        userWorkflows: state.userWorkflows.map((userWorkflow) =>
-          userWorkflow.id === id
-            ? { ...userWorkflow, ...completionData }
-            : userWorkflow
-        ),
-        loading: false,
-      }));
-    } catch (error) {
-      set({ error: (error as Error).message, loading: false });
-      throw error;
-    }
-  },
+  fetchUserWorkflows,
+  getUserWorkflowById,
+  startWorkflow,
+  updateUserWorkflow,
+  completeUserWorkflow,
 }));
+
+// Helper functions for steps and user workflows
+async function fetchSteps(assayId: string) {
+  // Implementation for steps will be added later
+}
+
+async function getStepById(id: string) {
+  // Implementation for steps will be added later
+  return null;
+}
+
+async function createStep(step: Omit<Step, 'id'>) {
+  // Implementation for steps will be added later
+  return '';
+}
+
+async function updateStep(id: string, data: Partial<Step>) {
+  // Implementation for steps will be added later
+}
+
+async function fetchUserWorkflows() {
+  // Implementation for user workflows will be added later
+}
+
+async function getUserWorkflowById(id: string) {
+  // Implementation for user workflows will be added later
+  return null;
+}
+
+async function startWorkflow(workflowId: string, parameters: Record<string, any>) {
+  // Implementation for user workflows will be added later
+  return '';
+}
+
+async function updateUserWorkflow(id: string, data: Partial<UserWorkflow>) {
+  // Implementation for user workflows will be added later
+}
+
+async function completeUserWorkflow(id: string) {
+  // Implementation for user workflows will be added later
+}
