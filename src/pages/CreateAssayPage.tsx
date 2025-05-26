@@ -30,6 +30,16 @@ const parameterSchema = z.object({
   step: z.number().optional(),
 });
 
+const stepSchema = z.object({
+  title: z.string(),
+  description: z.string(),
+  estimatedTime: z.string(),
+  warning: z.string().optional(),
+  notes: z.string().optional(),
+  calculationDependencies: z.array(z.string()).optional(),
+  calculationFormula: z.string().optional(),
+});
+
 const assaySchema = z.object({
   title: z.string(),
   description: z.string(),
@@ -44,6 +54,7 @@ export function CreateAssayPage() {
   const { createAssay } = useWorkflowStore();
   const [materials, setMaterials] = useState<z.infer<typeof materialSchema>[]>([]);
   const [parameters, setParameters] = useState<z.infer<typeof parameterSchema>[]>([]);
+  const [steps, setSteps] = useState<z.infer<typeof stepSchema>[]>([]);
 
   const {
     register,
@@ -93,12 +104,42 @@ export function CreateAssayPage() {
     setParameters(updatedParameters);
   };
 
+  const addStep = () => {
+    setSteps([
+      ...steps,
+      {
+        title: '',
+        description: '',
+        estimatedTime: '',
+        warning: '',
+        notes: '',
+        calculationDependencies: [],
+        calculationFormula: '',
+      },
+    ]);
+  };
+
+  const removeStep = (index: number) => {
+    setSteps(steps.filter((_, i) => i !== index));
+  };
+
+  const updateStep = (
+    index: number,
+    field: keyof z.infer<typeof stepSchema>,
+    value: string | string[]
+  ) => {
+    const updatedSteps = [...steps];
+    updatedSteps[index] = { ...updatedSteps[index], [field]: value };
+    setSteps(updatedSteps);
+  };
+
   const onSubmit = async (data: AssayFormData) => {
     try {
       await createAssay({
         ...data,
         materials,
         parameters,
+        steps: steps.map((step, index) => ({ ...step, order: index + 1 })),
       });
       navigate('/assays');
     } catch (error) {
@@ -244,6 +285,69 @@ export function CreateAssayPage() {
                   leftIcon={<Plus className="h-4 w-4" />}
                 >
                   Add Parameter
+                </Button>
+              </CardContent>
+            </Card>
+
+            <Card className="mb-8">
+              <CardHeader>
+                <CardTitle>Steps</CardTitle>
+              </CardHeader>
+              <CardContent>
+                {steps.map((step, index) => (
+                  <div key={index} className="border-b border-gray-200 pb-6 mb-6 last:border-0 last:pb-0 last:mb-0">
+                    <div className="flex justify-between items-center mb-4">
+                      <h4 className="text-lg font-medium">Step {index + 1}</h4>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        onClick={() => removeStep(index)}
+                        leftIcon={<Minus className="h-4 w-4" />}
+                      >
+                        Remove Step
+                      </Button>
+                    </div>
+                    <div className="space-y-4">
+                      <Input
+                        placeholder="Step title"
+                        value={step.title}
+                        onChange={(e) => updateStep(index, 'title', e.target.value)}
+                      />
+                      <Input
+                        placeholder="Step description"
+                        value={step.description}
+                        onChange={(e) => updateStep(index, 'description', e.target.value)}
+                      />
+                      <Input
+                        placeholder="Estimated time (e.g., 30 minutes)"
+                        value={step.estimatedTime}
+                        onChange={(e) => updateStep(index, 'estimatedTime', e.target.value)}
+                      />
+                      <Input
+                        placeholder="Warning (optional)"
+                        value={step.warning || ''}
+                        onChange={(e) => updateStep(index, 'warning', e.target.value)}
+                      />
+                      <Input
+                        placeholder="Notes (optional)"
+                        value={step.notes || ''}
+                        onChange={(e) => updateStep(index, 'notes', e.target.value)}
+                      />
+                      <Input
+                        placeholder="Calculation formula (optional)"
+                        value={step.calculationFormula || ''}
+                        onChange={(e) => updateStep(index, 'calculationFormula', e.target.value)}
+                      />
+                    </div>
+                  </div>
+                ))}
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={addStep}
+                  leftIcon={<Plus className="h-4 w-4" />}
+                >
+                  Add Step
                 </Button>
               </CardContent>
             </Card>
