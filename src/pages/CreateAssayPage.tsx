@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import { Plus, Minus, Save, ArrowLeft } from 'lucide-react';
+import { Plus, Minus, Save, ArrowLeft, Clock } from 'lucide-react';
 import { AppLayout } from '../components/layout/AppLayout';
 import { Button } from '../components/ui/Button';
 import { Input } from '../components/ui/Input';
@@ -133,6 +133,13 @@ export function CreateAssayPage() {
     const updatedSteps = [...steps];
     updatedSteps[index] = { ...updatedSteps[index], [field]: value };
     setSteps(updatedSteps);
+  };
+
+  const setStepDuration = (index: number, totalMinutes: number) => {
+    const hours = Math.floor(totalMinutes / 60);
+    const minutes = totalMinutes % 60;
+    updateStep(index, 'hours', hours);
+    updateStep(index, 'minutes', minutes);
   };
 
   const calculateTotalTime = () => {
@@ -333,23 +340,82 @@ export function CreateAssayPage() {
                         value={step.description}
                         onChange={(e) => updateStep(index, 'description', e.target.value)}
                       />
-                      <div className="flex gap-4">
-                        <Input
-                          type="number"
-                          min="0"
-                          placeholder="Hours"
-                          value={step.hours}
-                          onChange={(e) => updateStep(index, 'hours', parseInt(e.target.value) || 0)}
-                        />
-                        <Input
-                          type="number"
-                          min="0"
-                          max="59"
-                          placeholder="Minutes"
-                          value={step.minutes}
-                          onChange={(e) => updateStep(index, 'minutes', parseInt(e.target.value) || 0)}
-                        />
+                      
+                      <div className="space-y-4">
+                        <div className="flex items-center gap-4">
+                          <div className="flex-1">
+                            <label className="block text-sm font-medium text-gray-700 mb-1">
+                              Duration
+                            </label>
+                            <div className="flex gap-4">
+                              <div className="flex-1">
+                                <label className="block text-sm text-gray-600 mb-1">Hours</label>
+                                <Input
+                                  type="number"
+                                  min="0"
+                                  value={step.hours}
+                                  onChange={(e) => updateStep(index, 'hours', parseInt(e.target.value) || 0)}
+                                />
+                              </div>
+                              <div className="flex-1">
+                                <label className="block text-sm text-gray-600 mb-1">Minutes</label>
+                                <Input
+                                  type="number"
+                                  min="0"
+                                  max="59"
+                                  value={step.minutes}
+                                  onChange={(e) => updateStep(index, 'minutes', parseInt(e.target.value) || 0)}
+                                />
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                        
+                        <div>
+                          <label className="block text-sm text-gray-600 mb-2">
+                            Duration Slider (in minutes)
+                          </label>
+                          <input
+                            type="range"
+                            min="0"
+                            max="480"
+                            value={step.hours * 60 + step.minutes}
+                            onChange={(e) => setStepDuration(index, parseInt(e.target.value))}
+                            className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer"
+                          />
+                        </div>
+
+                        <div className="flex gap-2">
+                          <Button
+                            type="button"
+                            variant="outline"
+                            size="sm"
+                            onClick={() => setStepDuration(index, 30)}
+                            leftIcon={<Clock className="h-4 w-4" />}
+                          >
+                            30 mins
+                          </Button>
+                          <Button
+                            type="button"
+                            variant="outline"
+                            size="sm"
+                            onClick={() => setStepDuration(index, 60)}
+                            leftIcon={<Clock className="h-4 w-4" />}
+                          >
+                            1 hour
+                          </Button>
+                          <Button
+                            type="button"
+                            variant="outline"
+                            size="sm"
+                            onClick={() => setStepDuration(index, 120)}
+                            leftIcon={<Clock className="h-4 w-4" />}
+                          >
+                            2 hours
+                          </Button>
+                        </div>
                       </div>
+
                       <Input
                         placeholder="Warning (optional)"
                         value={step.warning || ''}
