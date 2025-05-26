@@ -11,15 +11,15 @@ import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/Card'
 import { useWorkflowStore } from '../store/workflowStore';
 
 const materialSchema = z.object({
-  name: z.string().min(1, 'Material name is required'),
-  quantity: z.string().min(1, 'Quantity is required'),
-  unit: z.string().min(1, 'Unit is required'),
+  name: z.string(),
+  quantity: z.string(),
+  unit: z.string(),
   affiliateLink: z.string().optional(),
 });
 
 const parameterSchema = z.object({
-  name: z.string().min(1, 'Parameter name is required'),
-  description: z.string().min(1, 'Description is required'),
+  name: z.string(),
+  description: z.string(),
   type: z.enum(['text', 'number', 'select', 'radio', 'checkbox']),
   required: z.boolean(),
   options: z.array(z.string()).optional(),
@@ -31,10 +31,10 @@ const parameterSchema = z.object({
 });
 
 const assaySchema = z.object({
-  title: z.string().min(3, 'Title must be at least 3 characters'),
-  description: z.string().min(10, 'Description must be at least 10 characters'),
-  protocol: z.string().min(10, 'Protocol must be at least 10 characters'),
-  estimatedTime: z.string().min(1, 'Estimated time is required'),
+  title: z.string(),
+  description: z.string(),
+  protocol: z.string(),
+  estimatedTime: z.string(),
 });
 
 type AssayFormData = z.infer<typeof assaySchema>;
