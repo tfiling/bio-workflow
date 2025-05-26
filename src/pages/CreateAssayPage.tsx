@@ -9,6 +9,7 @@ import { Button } from '../components/ui/Button';
 import { Input } from '../components/ui/Input';
 import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/Card';
 import { useWorkflowStore } from '../store/workflowStore';
+import { calculateDuration } from '../lib/utils';
 
 const materialSchema = z.object({
   name: z.string(),
@@ -33,7 +34,8 @@ const parameterSchema = z.object({
 const stepSchema = z.object({
   title: z.string(),
   description: z.string(),
-  estimatedTime: z.string(),
+  hours: z.number().min(0),
+  minutes: z.number().min(0).max(59),
   warning: z.string().optional(),
   notes: z.string().optional(),
   calculationDependencies: z.array(z.string()).optional(),
@@ -44,7 +46,6 @@ const assaySchema = z.object({
   title: z.string(),
   description: z.string(),
   protocol: z.string(),
-  estimatedTime: z.string(),
 });
 
 type AssayFormData = z.infer<typeof assaySchema>;
@@ -110,7 +111,8 @@ export function CreateAssayPage() {
       {
         title: '',
         description: '',
-        estimatedTime: '',
+        hours: 0,
+        minutes: 0,
         warning: '',
         notes: '',
         calculationDependencies: [],
@@ -126,20 +128,36 @@ export function CreateAssayPage() {
   const updateStep = (
     index: number,
     field: keyof z.infer<typeof stepSchema>,
-    value: string | string[]
+    value: string | number | string[]
   ) => {
     const updatedSteps = [...steps];
     updatedSteps[index] = { ...updatedSteps[index], [field]: value };
     setSteps(updatedSteps);
   };
 
+  const calculateTotalTime = () => {
+    const totalMinutes = steps.reduce((total, step) => {
+      return total + (step.hours * 60) + step.minutes;
+    }, 0);
+    
+    const hours = Math.floor(totalMinutes / 60);
+    const minutes = totalMinutes % 60;
+    
+    return `${hours} hour${hours !== 1 ? 's' : ''} ${minutes} minute${minutes !== 1 ? 's' : ''}`.trim();
+  };
+
   const onSubmit = async (data: AssayFormData) => {
     try {
       await createAssay({
         ...data,
+        estimatedTime: calculateTotalTime(),
         materials,
         parameters,
-        steps: steps.map((step, index) => ({ ...step, order: index + 1 })),
+        steps: steps.map((step, index) => ({
+          ...step,
+          order: index + 1,
+          estimatedTime: `${step.hours} hour${step.hours !== 1 ? 's' : ''} ${step.minutes} minute${step.minutes !== 1 ? 's' : ''}`.trim()
+        })),
       });
       navigate('/assays');
     } catch (error) {
@@ -188,12 +206,9 @@ export function CreateAssayPage() {
                   placeholder="Detailed protocol instructions"
                 />
 
-                <Input
-                  label="Estimated Time"
-                  {...register('estimatedTime')}
-                  error={errors.estimatedTime?.message}
-                  placeholder="e.g., 2 hours"
-                />
+                <div className="text-sm text-gray-600">
+                  Estimated Time: {calculateTotalTime() || 'No steps added yet'}
+                </div>
               </CardContent>
             </Card>
 
@@ -318,11 +333,23 @@ export function CreateAssayPage() {
                         value={step.description}
                         onChange={(e) => updateStep(index, 'description', e.target.value)}
                       />
-                      <Input
-                        placeholder="Estimated time (e.g., 30 minutes)"
-                        value={step.estimatedTime}
-                        onChange={(e) => updateStep(index, 'estimatedTime', e.target.value)}
-                      />
+                      <div className="flex gap-4">
+                        <Input
+                          type="number"
+                          min="0"
+                          placeholder="Hours"
+                          value={step.hours}
+                          onChange={(e) => updateStep(index, 'hours', parseInt(e.target.value) || 0)}
+                        />
+                        <Input
+                          type="number"
+                          min="0"
+                          max="59"
+                          placeholder="Minutes"
+                          value={step.minutes}
+                          onChange={(e) => updateStep(index, 'minutes', parseInt(e.target.value) || 0)}
+                        />
+                      </div>
                       <Input
                         placeholder="Warning (optional)"
                         value={step.warning || ''}
